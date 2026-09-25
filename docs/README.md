@@ -10,7 +10,7 @@ Written as questions and answers, with simple examples and MERN comparisons, so 
 | 1 | Introduction | - | Done |
 | 2 | Day 1: First AI chatbot with Python | [day-01-first-chatbot.md](day-01-first-chatbot.md) | In progress |
 | 3 | Day 2: Conversation memory | | |
-| 4 | Day 3: Prompt engineering | | |
+| 4 | Day 3: Prompt engineering | [day-03-prompt-engineering.md](day-03-prompt-engineering.md) | Started (system prompt, done in project) |
 | 5 | Day 4: Tools | | |
 | 6 | Day 5: Document AI | | |
 | 7 | Day 6: First RAG system | | |

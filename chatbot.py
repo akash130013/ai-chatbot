@@ -5,7 +5,11 @@ import sys
 import ollama
 
 MODEL = os.getenv("MODEL", "qwen3:4b")
-SYSTEM_PROMPT = "You are a helpful, concise assistant."
+SYSTEM_PROMPT = (
+    "You are a helpful, concise assistant. If the user's question is broad "
+    "or could mean several things, ask 1-2 short clarifying questions before "
+    "giving a full answer. Otherwise answer directly."
+)
 
 
 def main() -> None:
