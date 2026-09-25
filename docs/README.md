@@ -30,6 +30,10 @@ Written as questions and answers, with simple examples and MERN comparisons, so 
 | 21 | Day 20: Deployment | | |
 | 22 | Day 21: Capstone project | | |
 
+## Concepts
+
+- [Why does this course exist if the model is already trained?](concepts-why-this-course.md)
+
 ## Glossary (grows as we learn)
 
 - **Model (LLM):** a file of learned numbers that predicts the next word.
