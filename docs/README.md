@@ -33,6 +33,7 @@ Written as questions and answers, with simple examples and MERN comparisons, so 
 ## Concepts
 
 - [Why does this course exist if the model is already trained?](concepts-why-this-course.md)
+- [Cheat sheet: Ollama vs Qwen](cheatsheet-ollama-vs-qwen.md)
 
 ## Glossary (grows as we learn)
 
