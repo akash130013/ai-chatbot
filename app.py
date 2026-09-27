@@ -5,15 +5,11 @@ import ollama
 import streamlit as st
 
 MODEL = os.getenv("MODEL", "qwen3:4b")
-SYSTEM_PROMPT = (
-    "You are a helpful, concise assistant. If the user's question is broad "
-    "or could mean several things, ask 1-2 short clarifying questions before "
-    "giving a full answer. Otherwise answer directly."
-)
+SYSTEM_PROMPT = "You are a helpful, concise assistant."
 
 st.set_page_config(page_title="AI Chatbot", page_icon="💬")
 st.title("💬 AI Chatbot")
-st.caption(f"Running locally with Ollama ({MODEL})")
+st.caption(f"Running locally with Ollama ({MODEL})") 
 
 # Streamlit re-runs this script on every interaction, so history lives in session_state.
 if "messages" not in st.session_state:
