@@ -11,7 +11,7 @@ Written as questions and answers, with simple examples and MERN comparisons, so 
 | 2 | Day 1: First AI chatbot with Python | [day-01-first-chatbot.md](day-01-first-chatbot.md) | Done |
 | 3 | Day 2: Conversation memory | [day-02-conversation-memory.md](day-02-conversation-memory.md) | Done |
 | 4 | Day 3: Prompt engineering | [day-03-prompt-engineering.md](day-03-prompt-engineering.md) & [day3/interviewer_bot.py](../day3/interviewer_bot.py) | Done |
-| 5 | Day 4: Tools | | In progress |
+| 5 | Day 4: Tools | [day-04-ai-tools.md](day-04-ai-tools.md) & [day4/tools_app.py](../day4/tools_app.py) | In progress |
 | 6 | Day 5: Document AI | | |
 | 7 | Day 6: First RAG system | | |
 | 8 | Day 7: First AI agent | | |
