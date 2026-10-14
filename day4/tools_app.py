@@ -13,7 +13,7 @@ ask us to run, whose real result we hand back to it.
 
 The flow, step by step (this is the whole concept of "tool calling"):
   1. We describe our Python function to the model (name + what it does)
-     as a small JSON "schema", in the `TOOLS` list below.
+     as a small JSON "schema" -- see tool_manager.TOOLS.
   2. We send the conversation PLUS that list of available tools.
   3. The model does NOT answer directly if it needs the tool. Instead it
      replies with a special "tool_calls" field saying, in effect,
@@ -27,13 +27,19 @@ The flow, step by step (this is the whole concept of "tool calling"):
 MERN comparison: step 3 is like a controller that, instead of writing
 the HTTP response itself, calls `await userService.getUser(id)` first,
 then uses that real data to build the response.
+
+This file ONLY talks to the model and draws the chat UI. Every actual
+tool (what it does, how it's run) now lives in tool_manager.py -- this
+is the same split you'd make between a controller (this file) and a
+services folder (tool_manager.py), so this file doesn't grow every time
+a new tool is added.
 """
 import os
-from datetime import datetime
 
 import ollama
-import requests
 import streamlit as st
+
+from tool_manager import TOOLS, run_tool_call
 
 # A smaller/faster model is a good fit here: tool-calling adds an extra
 # back-and-forth round trip (step 3 -> 4 -> 5 -> 6 above), so speed
@@ -48,98 +54,13 @@ SYSTEM_PROMPT = (
 )
 
 
-# --- STEP 1: the real Python function (the "tool" itself) --------------
-# This is a completely ordinary function. Nothing about it is "AI" --
-# it's exactly the kind of helper you'd write in any Python project.
-def get_current_time() -> str:
-    return datetime.now().strftime("%I:%M %p on %A, %B %d, %Y")
-
-
-# A second tool, this time one that calls a REAL external API over the
-# internet (Open-Meteo -- free, no API key needed, unlike most weather
-# APIs). The pattern is identical to get_current_time(): an ordinary
-# Python function, with no AI involved in fetching the data itself.
-#
-# Note the `city: str` parameter. Unlike get_current_time (which needs
-# no input), the model must extract "city" from the user's sentence
-# ("weather in Mumbai" -> city="Mumbai") and pass it to this function.
-# That's why TOOLS below describes a `parameters` schema for it.
-def get_weather(city: str) -> str:
-    # Step A: turn a city name into latitude/longitude (geocoding).
-    geo = requests.get(
-        "https://geocoding-api.open-meteo.com/v1/search",
-        params={"name": city, "count": 1},
-        timeout=10,
-    ).json()
-    if not geo.get("results"):
-        return f"Could not find a location named '{city}'."
-    place = geo["results"][0]
-    lat, lon = place["latitude"], place["longitude"]
-
-    # Step B: ask for the current weather at that latitude/longitude.
-    weather = requests.get(
-        "https://api.open-meteo.com/v1/forecast",
-        params={"latitude": lat, "longitude": lon, "current_weather": True},
-        timeout=10,
-    ).json()["current_weather"]
-
-    return (
-        f"{place['name']}: {weather['temperature']}°C, "
-        f"wind {weather['windspeed']} km/h"
-    )
-
-
-# A lookup table so that when the model says "run get_current_time" (or
-# "run get_weather"), our code knows which real Python function that
-# name refers to. (This is the beginning of what the course later calls
-# a "Tool Manager".)
-AVAILABLE_FUNCTIONS = {
-    "get_current_time": get_current_time,
-    "get_weather": get_weather,
-}
-
-# --- STEP 1 (continued): describe the function to the model ------------
-# This JSON-like schema is NOT code the model runs. It is just a
-# description -- "here is a tool named X, it does Y, it takes these
-# arguments" -- so the model knows the tool exists and when to ask for it.
-TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_current_time",
-            "description": "Get the current real-world date and time.",
-            "parameters": {
-                "type": "object",
-                "properties": {},
-                "required": [],
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_weather",
-            "description": "Get the current real-world weather for a city.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "city": {
-                        "type": "string",
-                        "description": "The city name, e.g. 'Mumbai' or 'London'",
-                    },
-                },
-                "required": ["city"],
-            },
-        },
-    },
-]
-
-
 def run_with_tools(messages: list[dict]) -> str:
     """Send the conversation to the model, handle any tool call it asks
     for, and return the final text answer. This is steps 2-6 above."""
 
     # STEP 2: send the conversation + the list of tools we offer.
+    # (TOOLS comes from tool_manager.py -- add a tool there and it
+    # automatically becomes available here, with no change to this file.)
     response = ollama.chat(model=MODEL, messages=messages, tools=TOOLS)
     message = response["message"]
 
@@ -153,23 +74,12 @@ def run_with_tools(messages: list[dict]) -> str:
     # so it remembers (Day 2 concept) that it asked for a tool.
     messages.append(message)
 
-    # STEP 4: WE run the real Python function. The model never executes
-    # anything itself -- it only ever asks.
+    # STEPS 4-5: run_tool_call (in tool_manager.py) does the actual
+    # work -- looks up the real Python function, runs it with the
+    # arguments the model extracted, and returns the result as text.
     for call in tool_calls:
-        func_name = call["function"]["name"]
-        # The model fills in `arguments` itself, e.g. {"city": "Mumbai"},
-        # by reading the `parameters` schema we gave it for this tool.
-        arguments = call["function"].get("arguments", {})
-        func = AVAILABLE_FUNCTIONS.get(func_name)
-        result = func(**arguments) if func else f"Error: unknown tool '{func_name}'"
-
-        # STEP 5: hand the real result back as a "tool" message.
-        messages.append(
-            {
-                "role": "tool",
-                "content": str(result),
-            }
-        )
+        result = run_tool_call(call)
+        messages.append({"role": "tool", "content": result})
 
     # STEP 6: ask the model again, now that it has the real data, to
     # write its final answer.
@@ -193,7 +103,7 @@ if st.sidebar.button("New chat"):
     st.rerun()
 
 st.sidebar.markdown(
-    "**Try it:**\n- What time is it?\n- What is today's date?\n"
+    "**Try it:**\n- What time is it?\n- What's the weather in Mumbai?\n"
     "- What is 2 + 2? *(should answer directly, no tool needed)*"
 )
 
