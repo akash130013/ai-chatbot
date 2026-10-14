@@ -32,6 +32,7 @@ import os
 from datetime import datetime
 
 import ollama
+import requests
 import streamlit as st
 
 # A smaller/faster model is a good fit here: tool-calling adds an extra
@@ -54,11 +55,47 @@ def get_current_time() -> str:
     return datetime.now().strftime("%I:%M %p on %A, %B %d, %Y")
 
 
-# A lookup table so that when the model says "run get_current_time",
-# our code knows which real Python function that name refers to.
-# (This is the beginning of what the course later calls a "Tool Manager".)
+# A second tool, this time one that calls a REAL external API over the
+# internet (Open-Meteo -- free, no API key needed, unlike most weather
+# APIs). The pattern is identical to get_current_time(): an ordinary
+# Python function, with no AI involved in fetching the data itself.
+#
+# Note the `city: str` parameter. Unlike get_current_time (which needs
+# no input), the model must extract "city" from the user's sentence
+# ("weather in Mumbai" -> city="Mumbai") and pass it to this function.
+# That's why TOOLS below describes a `parameters` schema for it.
+def get_weather(city: str) -> str:
+    # Step A: turn a city name into latitude/longitude (geocoding).
+    geo = requests.get(
+        "https://geocoding-api.open-meteo.com/v1/search",
+        params={"name": city, "count": 1},
+        timeout=10,
+    ).json()
+    if not geo.get("results"):
+        return f"Could not find a location named '{city}'."
+    place = geo["results"][0]
+    lat, lon = place["latitude"], place["longitude"]
+
+    # Step B: ask for the current weather at that latitude/longitude.
+    weather = requests.get(
+        "https://api.open-meteo.com/v1/forecast",
+        params={"latitude": lat, "longitude": lon, "current_weather": True},
+        timeout=10,
+    ).json()["current_weather"]
+
+    return (
+        f"{place['name']}: {weather['temperature']}°C, "
+        f"wind {weather['windspeed']} km/h"
+    )
+
+
+# A lookup table so that when the model says "run get_current_time" (or
+# "run get_weather"), our code knows which real Python function that
+# name refers to. (This is the beginning of what the course later calls
+# a "Tool Manager".)
 AVAILABLE_FUNCTIONS = {
     "get_current_time": get_current_time,
+    "get_weather": get_weather,
 }
 
 # --- STEP 1 (continued): describe the function to the model ------------
@@ -77,7 +114,24 @@ TOOLS = [
                 "required": [],
             },
         },
-    }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get the current real-world weather for a city.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "description": "The city name, e.g. 'Mumbai' or 'London'",
+                    },
+                },
+                "required": ["city"],
+            },
+        },
+    },
 ]
 
 
@@ -103,8 +157,11 @@ def run_with_tools(messages: list[dict]) -> str:
     # anything itself -- it only ever asks.
     for call in tool_calls:
         func_name = call["function"]["name"]
+        # The model fills in `arguments` itself, e.g. {"city": "Mumbai"},
+        # by reading the `parameters` schema we gave it for this tool.
+        arguments = call["function"].get("arguments", {})
         func = AVAILABLE_FUNCTIONS.get(func_name)
-        result = func() if func else f"Error: unknown tool '{func_name}'"
+        result = func(**arguments) if func else f"Error: unknown tool '{func_name}'"
 
         # STEP 5: hand the real result back as a "tool" message.
         messages.append(
