@@ -1,0 +1,8 @@
+Acme Corp — Remote Work Policy (v3)
+
+1. Employees may work remotely up to 3 days per week.
+2. Core hours are 11:00 AM to 4:00 PM IST; employees must be reachable during this window.
+3. Remote work requests must be approved by a direct manager at least 2 business days in advance.
+4. Employees working remotely for more than 2 consecutive weeks must notify HR.
+5. Company laptops must use the VPN when accessing internal tools from outside the office.
+6. This policy does not apply to interns, who are required to work on-site 5 days per week.
