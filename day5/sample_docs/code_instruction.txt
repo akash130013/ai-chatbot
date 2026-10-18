@@ -1,0 +1,15 @@
+code-only instructions in plain text.
+
+Requirements:
+- Output only code, with no explanations, comments, markdown, or extra text.
+- Use clean, valid syntax for the target language.
+- Keep formatting consistent and easy to read.
+- Do not include placeholders like "your code here" unless explicitly requested.
+- If a task needs multiple steps, express them as executable code in the correct language.
+- Avoid narrative text, headings, or summaries.
+- Preserve correctness, readability, and minimal unnecessary whitespace.
+
+Examples:
+- Python: print("Hello, world!")
+- JavaScript: console.log("Hello, world!");
+- HTML: <h1>Hello, world!</h1>
