@@ -1,0 +1,3 @@
+Acme Corp — Expense Reimbursement Policy
+Travel expenses above 5000 INR require manager pre-approval.
+Submit receipts within 30 days of the expense.

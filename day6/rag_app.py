@@ -18,13 +18,14 @@ The full RAG flow, every time you ask a question:
 
 This is why "R-A-G" is the name: RETRIEVAL-AUGMENTED GENERATION.
 """
+import hashlib
 import os
 import pickle
 
 import ollama
 import streamlit as st
 
-from knowledge_base import load_knowledge_base, build_semantic_index, semantic_retrieve
+from knowledge_base import DOCS_DIR, load_knowledge_base, build_semantic_index, semantic_retrieve
 
 MODEL = os.getenv("MODEL", "qwen3:1.7b")
 INDEX_CACHE = os.path.join(os.path.dirname(__file__), "indexed_chunks.pkl")
@@ -36,18 +37,43 @@ SYSTEM_PROMPT = (
 )
 
 
-@st.cache_resource(show_spinner="Building knowledge base index (one-time)...")
+def _docs_fingerprint() -> str:
+    """A short hash of every file's name + content + modified time in
+    sample_docs/. If a SINGLE byte changes in ANY document -- a new
+    file added, an edit, a deletion -- this value changes too. This is
+    how we detect "the documents changed, the cached index is stale."""
+    hasher = hashlib.sha256()
+    for filename in sorted(os.listdir(DOCS_DIR)):
+        path = os.path.join(DOCS_DIR, filename)
+        hasher.update(filename.encode())
+        hasher.update(str(os.path.getmtime(path)).encode())
+    return hasher.hexdigest()
+
+
+@st.cache_resource(show_spinner="Building knowledge base index...")
 def get_index():
     """Building embeddings for every chunk is the slow, one-time cost of
     RAG. We cache it (to disk, and in Streamlit's memory) so it only
-    happens once, not on every single question."""
+    happens once PER VERSION of the documents -- but if the documents
+    change, the cache is thrown away and rebuilt automatically.
+
+    Bug this fixes: without the fingerprint check, editing/adding a
+    file in sample_docs/ would silently keep answering from the OLD,
+    stale index forever, since nothing ever told the cache to expire."""
+    current_fingerprint = _docs_fingerprint()
+
     if os.path.exists(INDEX_CACHE):
         with open(INDEX_CACHE, "rb") as f:
-            return pickle.load(f)
+            cached = pickle.load(f)
+        if isinstance(cached, dict) and cached.get("fingerprint") == current_fingerprint:
+            return cached["chunks"]
+        # Fingerprint mismatch (or an old-format cache with no fingerprint
+        # at all) -- a document changed. Fall through and rebuild.
+
     chunks = load_knowledge_base()
     indexed = build_semantic_index(chunks)
     with open(INDEX_CACHE, "wb") as f:
-        pickle.dump(indexed, f)
+        pickle.dump({"fingerprint": current_fingerprint, "chunks": indexed}, f)
     return indexed
 
 

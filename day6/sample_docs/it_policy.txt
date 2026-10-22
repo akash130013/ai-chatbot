@@ -1,0 +1,3 @@
+Acme Corp — IT Usage Policy
+Employees must not install unauthorized software on company laptops.
+All laptops are encrypted and must be locked when unattended.
