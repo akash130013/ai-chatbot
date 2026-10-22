@@ -13,7 +13,7 @@ Written as questions and answers, with simple examples and MERN comparisons, so 
 | 4 | Day 3: Prompt engineering | [day-03-prompt-engineering.md](day-03-prompt-engineering.md) & [day3/interviewer_bot.py](../day3/interviewer_bot.py) | Done |
 | 5 | Day 4: Tools | [day-04-ai-tools.md](day-04-ai-tools.md) & [day4/](../day4/) (tools_app.py + tool_manager.py) | Done |
 | 6 | Day 5: Document AI | [day-05-document-ai.md](day-05-document-ai.md) & [day5/](../day5/) | Done |
-| 7 | Day 6: First RAG system | | |
+| 7 | Day 6: First RAG system | [day-06-rag.md](day-06-rag.md) & [day6/](../day6/) | In progress |
 | 8 | Day 7: First AI agent | | |
 | 9 | Day 8: Model Context Protocol (MCP) | | |
 | 10 | Day 9: Autonomous agent | | |
