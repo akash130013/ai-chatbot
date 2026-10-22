@@ -77,12 +77,35 @@ def get_index():
     return indexed
 
 
+def _mentioned_filename(question: str, index: list[dict]) -> str | None:
+    """If the question literally names one of our real filenames (e.g.
+    "check in facilities.txt"), return it. This is plain string
+    matching -- no AI, no embeddings -- deliberately simple and
+    guaranteed-reliable, unlike letting similarity search "guess" which
+    file you meant (which we just proved fails for small files)."""
+    known_filenames = {c["filename"] for c in index}
+    question_lower = question.lower()
+    for filename in known_filenames:
+        if filename.lower() in question_lower:
+            return filename
+    return None
+
+
 def answer_with_rag(question: str, top_k: int = 3) -> tuple[str, list[dict]]:
     index = get_index()
 
+    # NEW: if the user named a specific file, don't gamble on similarity
+    # search finding it among hundreds of chunks from OTHER files (we
+    # proved this fails when one file dominates the corpus). Restrict
+    # the search space to just that file's chunks first.
+    named_file = _mentioned_filename(question, index)
+    search_space = (
+        [c for c in index if c["filename"] == named_file] if named_file else index
+    )
+
     # STEP 1: RETRIEVE -- find the few most relevant chunks, out of
     # potentially hundreds, using meaning (embeddings), not keywords.
-    top_chunks = semantic_retrieve(question, index, top_k=top_k)
+    top_chunks = semantic_retrieve(question, search_space, top_k=top_k)
 
     # STEP 2: AUGMENT -- build a prompt from ONLY those chunks.
     excerpts = "\n\n---\n\n".join(
