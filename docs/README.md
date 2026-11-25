@@ -14,8 +14,8 @@ Written as questions and answers, with simple examples and MERN comparisons, so 
 | 5 | Day 4: Tools | [day-04-ai-tools.md](day-04-ai-tools.md) & [day4/](../day4/) (tools_app.py + tool_manager.py) | Done |
 | 6 | Day 5: Document AI | [day-05-document-ai.md](day-05-document-ai.md) & [day5/](../day5/) | Done |
 | 7 | Day 6: First RAG system | [day-06-rag.md](day-06-rag.md) & [day6/](../day6/) | Done |
-| 8 | Day 7: First AI agent | | |
-| 9 | Day 8: Model Context Protocol (MCP) | | |
+| 8 | Day 7: First AI agent | [day7/planning_agent.py](../day7/planning_agent.py) | Done |
+| 9 | Day 8: Model Context Protocol (MCP) | | In progress |
 | 10 | Day 9: Autonomous agent | | |
 | 11 | Day 10: Advanced agent planning | | |
 | 12 | Day 11: Memory engineering | | |
