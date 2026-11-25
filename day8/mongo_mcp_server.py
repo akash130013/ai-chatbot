@@ -42,6 +42,16 @@ db.customers.insert_many([
     {"customer": "Priya", "email": "priya@example.com", "phone": "9876500002", "city": "Delhi"},
     {"customer": "Aisha", "email": "aisha@example.com", "phone": "9876500003", "city": "Bengaluru"},
 ])
+db.products.insert_many([
+    {"sku": "SKU-100", "name": "Wireless Mouse", "price": 799, "stock": 42},
+    {"sku": "SKU-101", "name": "Mechanical Keyboard", "price": 3499, "stock": 7},
+    {"sku": "SKU-102", "name": "USB-C Hub", "price": 1299, "stock": 0},
+])
+db.payments.insert_many([
+    {"payment_id": "PAY-1", "order_id": 1, "method": "UPI", "paid": False},
+    {"payment_id": "PAY-2", "order_id": 2, "method": "Card", "paid": True},
+    {"payment_id": "PAY-3", "order_id": 3, "method": "UPI", "paid": False},
+])
 
 # In a real 1000-collection system, this dict (and the schemas below)
 # would likely come from reading the DB's actual metadata at startup,
@@ -49,6 +59,8 @@ db.customers.insert_many([
 COLLECTION_SUMMARIES = {
     "orders": "Order records: who placed them, status, and failure reasons.",
     "customers": "Customer contact info: email, phone, city.",
+    "products": "Product catalog: SKU, name, price, stock count.",
+    "payments": "Payment records per order: method and whether paid.",
 }
 
 COLLECTION_SCHEMAS = {
@@ -58,6 +70,12 @@ COLLECTION_SCHEMAS = {
     ),
     "customers": (
         "customers: customer (string), email (string), phone (string), city (string)"
+    ),
+    "products": (
+        "products: sku (string), name (string), price (number, rupees), stock (int)"
+    ),
+    "payments": (
+        "payments: payment_id (string), order_id (int), method (string), paid (boolean)"
     ),
 }
 

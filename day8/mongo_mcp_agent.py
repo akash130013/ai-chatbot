@@ -44,7 +44,7 @@ def mcp_tool_to_ollama_schema(tool) -> dict:
 
 
 async def main() -> None:
-    question = "What is Ravi's email address?"
+    question = "Which products are out of stock?"
     print(f"Q: {question}\n")
 
     server_params = StdioServerParameters(command=sys.executable, args=[SERVER_SCRIPT])
