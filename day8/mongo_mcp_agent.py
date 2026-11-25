@@ -1,26 +1,12 @@
 """
-Day 8: an AI agent whose tools come from an MCP server (not hard-coded
-in this file at all), backed by a MongoDB-style database.
+Day 8: an AI agent whose tools come from an MCP server, now needing a
+REAL multi-step plan: discover which collection to use, THEN query it.
 
-This proves the exact mechanism asked about: "how does the agent pass
-a query to MongoDB -- through MCP?" Yes. Here is the real path a
-question takes, step by step:
-
-  1. You ask a question in plain English.
-  2. Ollama reads the tool's SCHEMA (fetched from the MCP server below,
-     not written by hand in this file) and decides it needs
-     `query_orders`, composing a `filter` dict itself from your words
-     and the schema in the tool's description.
-  3. That decision -- just a tool name + a dict of arguments, no code,
-     no actual MongoDB syntax -- is sent over MCP to mongo_mcp_server.py.
-  4. THAT server (a separate process) is the only place that touches
-     the database: it runs `db.orders.find(filter)` for real.
-  5. The real matching documents come back, through MCP, to this agent.
-  6. Ollama reads those real rows and writes your final answer.
-
-The model never "connects to MongoDB." It only ever asks a question in
-a structured shape; the MCP server is what actually talks to the
-database.
+Unlike the single-round version we tried first, this one wraps the
+same request/response pattern in a LOOP (the Day 7 agent concept),
+because the second tool call's choice (which collection) depends on
+what the FIRST tool call (list_collections) returned. This is the
+genuine sequential-dependency case Day 7's single test didn't prove.
 """
 import asyncio
 import os
@@ -32,20 +18,21 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 
 MODEL = os.getenv("MODEL", "qwen3:1.7b")
 SERVER_SCRIPT = os.path.join(os.path.dirname(__file__), "mongo_mcp_server.py")
+MAX_STEPS = 5
 
 SYSTEM_PROMPT = (
-    "You are a debugging assistant with access to a tool that queries a "
-    "MongoDB 'orders' collection. Use it to answer questions about orders. "
-    "Compose the MongoDB filter yourself based on the schema in the tool's "
-    "description."
+    "You are a debugging assistant for a MongoDB database with MANY "
+    "collections -- you do not know their names or fields in advance. "
+    "Always follow these steps in order: "
+    "1) list_collections() to see what's available, "
+    "2) describe_collection() on the one that looks relevant, to get its "
+    "real field names, "
+    "3) query_collection() using those exact field names. "
+    "Never guess a collection name or field name without checking first."
 )
 
 
 def mcp_tool_to_ollama_schema(tool) -> dict:
-    """Convert an MCP tool's schema into the shape Ollama's tools= param
-    expects. Both use JSON Schema underneath, so this is mostly just
-    relabeling -- proof that MCP and Ollama tool-calling are the same
-    underlying idea, just two different pieces of plumbing around it."""
     return {
         "type": "function",
         "function": {
@@ -57,7 +44,7 @@ def mcp_tool_to_ollama_schema(tool) -> dict:
 
 
 async def main() -> None:
-    question = "Which customer has the most failed orders, and what were the error messages?"
+    question = "What is Ravi's email address?"
     print(f"Q: {question}\n")
 
     server_params = StdioServerParameters(command=sys.executable, args=[SERVER_SCRIPT])
@@ -65,7 +52,6 @@ async def main() -> None:
         async with ClientSession(read, write) as session:
             await session.initialize()
 
-            # Discover tools from the MCP server -- NOT hard-coded here.
             mcp_tools = (await session.list_tools()).tools
             ollama_tools = [mcp_tool_to_ollama_schema(t) for t in mcp_tools]
 
@@ -74,28 +60,26 @@ async def main() -> None:
                 {"role": "user", "content": question},
             ]
 
-            response = ollama.chat(model=MODEL, messages=messages, tools=ollama_tools)
-            message = response["message"]
+            for step in range(1, MAX_STEPS + 1):
+                response = ollama.chat(model=MODEL, messages=messages, tools=ollama_tools)
+                message = response["message"]
 
-            if message.get("tool_calls"):
+                if not message.get("tool_calls"):
+                    print("A:", message["content"])
+                    return
+
                 messages.append(message)
                 for call in message["tool_calls"]:
                     name = call["function"]["name"]
                     args = call["function"].get("arguments", {})
-                    print(f"  agent calls (via MCP): {name}({args})")
+                    print(f"  [step {step}] agent calls (via MCP): {name}({args})")
 
-                    # THE key line: the call actually goes over MCP to the
-                    # separate server process, which is the only thing
-                    # that touches the database.
                     result = await session.call_tool(name, args)
                     result_text = result.content[0].text
-                    print(f"  MCP server returned: {result_text}\n")
+                    print(f"  [step {step}] MCP server returned: {result_text}\n")
                     messages.append({"role": "tool", "content": result_text})
 
-                final = ollama.chat(model=MODEL, messages=messages)
-                print("A:", final["message"]["content"])
-            else:
-                print("A:", message["content"])
+            print("Agent stopped: too many steps without a final answer.")
 
 
 if __name__ == "__main__":
